@@ -36,6 +36,35 @@ running, and never applies to Destiny 2 or the launcher themselves. Manual per-p
 set always take precedence over this profile. See `PriorityModeController` in
 `NetLimiterLite.Core/Throttling` and the "Destiny 2 Priority Mode" panel in the app.
 
+## Global Hotkeys
+
+`NetLimiterLite.App/Hotkeys/GlobalHotkeyManager` registers Windows global hotkeys
+(`RegisterHotKey`) so you can control the app while a game has focus, without alt-tabbing out.
+Bindings are data (`HotkeyBinding` in `NetLimiterLite.Core.Model`) persisted to
+`%APPDATA%/NetLimiterLite/hotkeys.json`, editable from the "Global Hotkeys" panel by clicking a
+binding's button and pressing the new combo. Defaults:
+
+| Action | Default |
+| --- | --- |
+| Toggle Destiny 2 Priority Mode | Ctrl+Alt+D |
+| Pause / Resume All Throttling | Ctrl+Alt+P |
+| Re-apply Current Limits | Ctrl+Alt+A |
+
+## Explicitly out of scope
+
+A couple of requested features aren't in this repo on purpose:
+
+- **Auto-clicker / input macros** - automating clicks/keypresses is input automation, which most
+  games' (including Destiny 2's) terms of service treat as cheating regardless of what it's
+  clicking. Not something this tool will do.
+- **"2nd instance" / multiboxing mode** - running multiple simultaneous game clients on one
+  account is against Bungie's ToS and is used to bypass vendor/loot cooldowns or account
+  restrictions. That's an exploit, not a networking feature, so it's not part of this tool.
+
+This project stays scoped to managing *your own machine's* network traffic (monitoring/throttling
+processes), which doesn't require touching game state, memory, or packets in a way that affects
+other players or violates a game's rules.
+
 ## Architecture
 
 ```

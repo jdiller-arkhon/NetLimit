@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Input;
+using NetLimiterLite.App.Hotkeys;
 using NetLimiterLite.Core.Model;
 using NetLimiterLite.Core.Throttling;
 
@@ -14,10 +16,14 @@ public partial class MainWindow : Window
 {
     private readonly RuleEngine _ruleEngine = new();
     private readonly RuleStore _ruleStore = new();
+    private readonly HotkeyStore _hotkeyStore = new();
     private readonly GamingPriorityProfile _destiny2Profile = GamingPriorityProfile.Destiny2();
     private PriorityModeController _priorityController;
+    private GlobalHotkeyManager? _hotkeyManager;
+    private HotkeyRowViewModel? _rebindingRow;
 
     public ObservableCollection<ProcessRowViewModel> Rows { get; } = new();
+    public ObservableCollection<HotkeyRowViewModel> HotkeyRows { get; } = new();
 
     public MainWindow()
     {
@@ -26,12 +32,97 @@ public partial class MainWindow : Window
 
         _priorityController = new PriorityModeController(_destiny2Profile);
         LoadPersistedRulesIntoEngine();
+        LoadHotkeys();
+
+        Loaded += MainWindow_Loaded;
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
 
         // TODO(windows-machine): once WinDivertPacketDiverter is implemented, start a
         // ThrottlePipeline here and populate `Rows` from a periodic snapshot of ProcessFlow
         // aggregates (see NetLimiterLite.Core.Model.ProcessFlow). Each refresh tick should also
         // call RecomputeRules() so Destiny 2 Priority Mode reacts to the game starting/stopping
         // without the user having to click Apply again.
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        _hotkeyManager = new GlobalHotkeyManager(this);
+        _hotkeyManager.ActionTriggered += HotkeyManager_ActionTriggered;
+        _hotkeyManager.RegistrationFailed += binding =>
+            Dispatcher.Invoke(() => HotkeyStatusText.Text = $"Could not register {binding} - already in use by another app.");
+
+        _hotkeyManager.RegisterAll(HotkeyRows.Select(r => r.Binding));
+    }
+
+    private void LoadHotkeys()
+    {
+        HotkeyRows.Clear();
+        foreach (var binding in _hotkeyStore.Load())
+        {
+            var row = new HotkeyRowViewModel { Binding = binding };
+            row.RefreshFromBinding();
+            HotkeyRows.Add(row);
+        }
+    }
+
+    private void HotkeyManager_ActionTriggered(HotkeyAction action)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            switch (action)
+            {
+                case HotkeyAction.ToggleDestiny2PriorityMode:
+                    Destiny2PriorityCheckBox.IsChecked = !(Destiny2PriorityCheckBox.IsChecked == true);
+                    break;
+                case HotkeyAction.ToggleThrottlingPause:
+                    PauseAllButton_Click(this, new RoutedEventArgs());
+                    break;
+                case HotkeyAction.ApplyLimits:
+                    RecomputeRules(persist: true);
+                    break;
+            }
+        });
+    }
+
+    private void RebindHotkeyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: HotkeyRowViewModel row }) return;
+
+        _rebindingRow = row;
+        row.CurrentKeys = "Press new key combo...";
+    }
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_rebindingRow is null) return;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        // Ignore bare modifier presses - wait for the actual key that completes the combo.
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
+        {
+            return;
+        }
+
+        var modifiers = HotkeyModifiers.None;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) modifiers |= HotkeyModifiers.Control;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) modifiers |= HotkeyModifiers.Alt;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) modifiers |= HotkeyModifiers.Shift;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Windows)) modifiers |= HotkeyModifiers.Win;
+
+        var vk = KeyInterop.VirtualKeyFromKey(key);
+
+        _rebindingRow.Binding.Modifiers = modifiers;
+        _rebindingRow.Binding.VirtualKeyCode = vk;
+        _rebindingRow.RefreshFromBinding();
+        _rebindingRow = null;
+
+        e.Handled = true;
+
+        _hotkeyStore.Save(HotkeyRows.Select(r => r.Binding));
+        _hotkeyManager?.RegisterAll(HotkeyRows.Select(r => r.Binding));
+        HotkeyStatusText.Text = "Hotkey updated and saved.";
     }
 
     private void LoadPersistedRulesIntoEngine()
@@ -101,5 +192,11 @@ public partial class MainWindow : Window
         // TODO(windows-machine): wire this into ThrottlePipeline once it exists - e.g. a
         // pipeline.SetPaused(bool) that makes HandlePacket always reinject immediately.
         StatusText.Text = _paused ? "Throttling paused - all traffic passes through." : "Throttling active.";
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _hotkeyManager?.Dispose();
+        base.OnClosed(e);
     }
 }
