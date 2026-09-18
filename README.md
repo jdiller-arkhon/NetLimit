@@ -25,6 +25,17 @@ This project uses WinDivert. That means:
   a real Windows machine** — it cannot run or be tested inside this Linux sandbox. This repo is
   the full design + scaffold; final build/run/signing of the installer happens on your machine.
 
+## Destiny 2 Priority Mode
+
+A built-in profile (`GamingPriorityProfile.Destiny2()`) recognizes `destiny2.exe` and
+`bungielauncher.exe`. When enabled and either process is active, every *other* process with
+network activity gets automatically capped (defaults: 200 KB/s down, 50 KB/s up) so Destiny 2 gets
+the rest of the connection - useful for stopping a background download, cloud backup, or update
+from causing lag spikes/disconnects mid-activity. The cap only applies while Destiny 2 is actually
+running, and never applies to Destiny 2 or the launcher themselves. Manual per-process limits you
+set always take precedence over this profile. See `PriorityModeController` in
+`NetLimiterLite.Core/Throttling` and the "Destiny 2 Priority Mode" panel in the app.
+
 ## Architecture
 
 ```
