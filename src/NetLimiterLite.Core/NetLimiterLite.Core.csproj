@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NetLimiterLite.Core</RootNamespace>
+    <!--
+      This project is intentionally platform-agnostic where possible (rate limiter, rule
+      matching). The Windows-only pieces (Netstat table reads, WinDivert P/Invoke) are isolated
+      in the Netstat/ and Diversion/ folders and guarded with OperatingSystem checks so the rest
+      of the assembly stays testable on any OS.
+    -->
+  </PropertyGroup>
+
+</Project>

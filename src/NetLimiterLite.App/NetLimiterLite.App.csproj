@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      TargetFramework is Windows-specific (WPF + WinDivert P/Invoke both require it) so this
+      project only builds on a Windows SDK. NetLimiterLite.Core and .Tests stay net8.0 (no -windows
+      suffix) so the rate-limiter/rule-matching logic can still be built and tested cross-platform.
+    -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>WinExe</OutputType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>NetLimiterLite</AssemblyName>
+    <RootNamespace>NetLimiterLite.App</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NetLimiterLite.Core\NetLimiterLite.Core.csproj" />
+  </ItemGroup>
+
+</Project>
